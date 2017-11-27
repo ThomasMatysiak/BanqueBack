@@ -25,7 +25,7 @@ app.use(bodyParser.json());
 var router = express.Router();
 
 var con = mysql.createConnection({
-  host: "localhost:3306",
+  host: "localhost",
   user: "root",
   password: "",
   database: "banquedb"
@@ -33,24 +33,62 @@ var con = mysql.createConnection({
 
 /* Connexion via MySQL
 con.connect();
-con.query('SELECT * from < table name >', function(err, rows, fields) {
+con.query('SELECT * from utilisateur', function(err, rows, fields) {
   if (!err)
     console.log('The solution is: ', rows);
   else
-    console.log('Error while performing Query.');
+    console.log('Error while performing Query.', err);
 });
 
 con.end();
 */
-router.get('/connect/:groupName', function(req, res) {
-	//res.status(401).send({error: "La partie est en cours"});
-	/*res.status(200).send({
-		idJoueur: getPlayerWithGroupName(req.params.groupName).idJoueur,
-		code: 200,
-		nomJoueur: req.params.groupName,
-		numJoueur: getPlayerWithGroupName(req.params.groupName).number
-	});*/
+
+
+/* Connexion utilisateur */
+router.get('/api/user/:username/:password', function(req,res) {
+    con.query('SELECT * from utilisateur WHERE username = "' + req.param("username") + '" AND password = "' + req.param("password") + '"', function(err, rows, fields) {
+      if (!err) {
+        if (rows.length == 0) {
+            res.status(404).send({error: "L'utilisateur n'existe pas"});
+        }
+        else {
+            res.status(200).send(rows);
+        }
+      }
+      else {
+        res.status(500).send({error: "MySQL error"});
+      }
+    });
 });
+
+/* Création utilisateur */
+router.post('/api/user/create', function(req, res) {
+    var username = req.body.username;
+    var password = req.body.password;
+
+    con.query('SELECT * from utilisateur WHERE username = "' + username + '";', function(err, rows, fields) {
+      if (!err) {
+        if (rows.length != 0) {
+            res.status(226).send({error: "L'utilisateur existe deja"});
+        }
+        else {
+            con.query('INSERT INTO utilisateur(username, password) VALUES("' + username + '","' + password + '");', function(err, rows, fields) {
+                if (!err) {
+                    res.status(201).send(rows);
+                }
+                else {
+                    res.status(500).send({error: "MySQL error"});
+                }
+            });
+        }
+      }
+      else {
+        res.status(500).send({error: "L'utilisateur n'existe pas"});
+        console.log('Error while performing Query.', err);
+      }
+    });
+});
+
 
 /* CORS REQUEST */
 app.use(function(req, res, next) {
