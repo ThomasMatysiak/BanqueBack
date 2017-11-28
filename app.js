@@ -89,6 +89,43 @@ router.post('/api/user/create', function(req, res) {
     });
 });
 
+router.post('/api/event/create', function(req, res) {
+    var title = req.body.title;
+    var dateDebut = req.body.dateDebut;
+    var dateFin = req.body.dateFin;
+    var idCreateur = req.body.idCreateur;
+
+    con.query('INSERT INTO evenement(idCreateur, titre, dateDebut, dateFin) VALUES("' + idCreateur + '","' + title + '","' + dateDebut + '","' + dateFin + '");', function(err, result) {
+        if (!err) {
+            var insertId = result.insertId;
+            console.log(insertId);
+            con.query('INSERT INTO membre_evenement(idEvenement, idUtilisateur) VALUES("' + insertId + '","' + idCreateur + '");', function(err, result) {
+                if (!err) {
+                    var insertId = result.insertId;
+                    res.status(201).send(result);
+                }
+                else {
+                    res.status(500).send({error: "MySQL error"});
+                }
+            });
+        }
+        else {
+            res.status(500).send({error: "MySQL error"});
+        }
+    });
+});
+
+router.get('/api/event/:idUtilisateur', function(req, res) {
+    var idUtilisateur = req.param("idUtilisateur");
+    con.query('SELECT e.idCreateur, e.titre, e.dateDebut, e.dateFin FROM evenement e INNER JOIN membre_evenement me ON me.idEvenement = e.id WHERE me.idUtilisateur = ' + idUtilisateur, function(err, rows, fields) {
+        if (!err) {
+            res.status(201).send(rows);
+        }
+        else {
+            res.status(500).send({error: "MySQL error"});
+        }
+    });
+})
 
 /* CORS REQUEST */
 app.use(function(req, res, next) {
