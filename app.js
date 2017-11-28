@@ -98,7 +98,6 @@ router.post('/api/event/create', function(req, res) {
     con.query('INSERT INTO evenement(idCreateur, titre, dateDebut, dateFin) VALUES("' + idCreateur + '","' + title + '","' + dateDebut + '","' + dateFin + '");', function(err, result) {
         if (!err) {
             var insertId = result.insertId;
-            console.log(insertId);
             con.query('INSERT INTO membre_evenement(idEvenement, idUtilisateur) VALUES("' + insertId + '","' + idCreateur + '");', function(err, result) {
                 if (!err) {
                     var insertId = result.insertId;
@@ -117,7 +116,7 @@ router.post('/api/event/create', function(req, res) {
 
 router.get('/api/event/:idUtilisateur', function(req, res) {
     var idUtilisateur = req.param("idUtilisateur");
-    con.query('SELECT e.idCreateur, e.titre, e.dateDebut, e.dateFin FROM evenement e INNER JOIN membre_evenement me ON me.idEvenement = e.id WHERE me.idUtilisateur = ' + idUtilisateur, function(err, rows, fields) {
+    con.query('SELECT e.id, e.idCreateur, e.titre, e.dateDebut, e.dateFin FROM evenement e INNER JOIN membre_evenement me ON me.idEvenement = e.id WHERE me.idUtilisateur = ' + idUtilisateur, function(err, rows, fields) {
         if (!err) {
             res.status(201).send(rows);
         }
@@ -125,8 +124,33 @@ router.get('/api/event/:idUtilisateur', function(req, res) {
             res.status(500).send({error: "MySQL error"});
         }
     });
-})
+});
 
+router.get('/api/event/:idEvent/details', function(req, res) {
+    var idEvent = req.param("idEvent");
+    con.query('SELECT e.idCreateur, e.titre, e.dateDebut, e.dateFin, (SELECT COALESCE(sum(d.montantDepense), 0) FROM depense d WHERE d.idEvenement = e.id) as totalDepense FROM evenement e WHERE e.id = ' + idEvent + ';', function(err, rows, fields) {
+        if (!err) {
+            res.status(201).send(rows);
+        }
+        else {
+            res.status(500).send({error: err});
+        }
+    });
+});
+
+router.get('/api/event/:idEvent/depenses', function(req, res) {
+    var idEvent = req.param("idEvent");
+    var rowResult = null;
+
+    con.query('SELECT d.id, d.libelle, d.date, d.montantDepense, (SELECT u.username FROM utilisateur u WHERE u.id = d.idPayeur) as payeur, d.participants FROM depense d WHERE d.idEvenement = ' + idEvent + ';', function(err, rows, fields) {
+        if (!err) {
+            res.status(201).send(rows);
+        }
+        else {
+            res.status(500).send({error: err});
+        }
+    });
+});
 /* CORS REQUEST */
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
