@@ -128,7 +128,7 @@ router.get('/api/event/:idUtilisateur', function(req, res) {
 
 router.get('/api/event/:idEvent/details', function(req, res) {
     var idEvent = req.param("idEvent");
-    con.query('SELECT e.idCreateur, e.titre, e.dateDebut, e.dateFin, (SELECT COALESCE(sum(d.montantDepense), 0) FROM depense d WHERE d.idEvenement = e.id) as totalDepense FROM evenement e WHERE e.id = ' + idEvent + ';', function(err, rows, fields) {
+    con.query('SELECT e.id, e.idCreateur, e.titre, e.dateDebut, e.dateFin, (SELECT COALESCE(sum(d.montantDepense), 0) FROM depense d WHERE d.idEvenement = e.id) as totalDepense, (SELECT count(id) FROM membre_evenement me WHERE me.idEvenement = e.id) as nbparticipants FROM evenement e WHERE e.id = ' + idEvent + ';', function(err, rows, fields) {
         if (!err) {
             res.status(201).send(rows);
         }
@@ -151,6 +151,64 @@ router.get('/api/event/:idEvent/depenses', function(req, res) {
         }
     });
 });
+
+router.post('/api/user/addEvent/:idEvent', function(req, res) {
+    var idEvent = req.param("idEvent");
+    var username = req.body.username;
+
+    con.query('SELECT * FROM utilisateur u WHERE u.username = "' + username+ '"', function(err, rows, fields) {
+        if (!err) {
+            if (rows.length == 0) {
+                res.status(500).send({error: "L'utilisateur n'existe pas"});
+            }
+        }
+        else {
+            res.status(500).send({error: err});
+        }
+    })
+    con.query('INSERT INTO membre_evenement(idEvenement, idUtilisateur) VALUES(' + idEvent + ', (SELECT u.id FROM utilisateur u WHERE u.username = "'+ username+'"));', function(err, result) {
+        if (!err) {
+            res.status(201).send(result);
+        }
+        else {
+            res.status(500).send({error: err});
+        }
+    });
+});
+
+router.get('/api/event/:idEvent/member/:idUser', function(req, res) {
+    var idEvent = req.param("idEvent");
+    var idUtilisateur = req.param("idUser");
+
+    con.query('SELECT (SELECT u.username FROM utilisateur u WHERE u.id = me.idUtilisateur) as username, me.idUtilisateur FROM membre_evenement me WHERE me.idEvenement = ' + idEvent + ' AND me.idUtilisateur != ' + idUtilisateur, function(err, rows, fields) {
+        if (!err) {
+            res.status(201).send(rows);
+        }
+        else {
+            res.status(500).send({error: err});
+        }
+    });
+});
+
+router.post('/api/event/depense', function(req, res) {
+    var idUtilisateur = req.body.idUtilisateur;
+    var idEvent = req.body.idEvent;
+    var libelle = req.body.libelle;
+    var date = req.body.date;
+    var montantDepense = req.body.montantDepense;
+    var participants = req.body.participants;
+
+    con.query('INSERT INTO depense(idEvenement, idPayeur, libelle, date, montantDepense, payeurInclus, participants) VALUES (' + idEvent + ',' + idUtilisateur + ',"' + libelle + '","' + date + '",' + montantDepense + ',1,"' + participants + '");', function(err, result) {
+        if (!err) {
+            res.status(201).send(result);
+        }
+        else {
+            res.status(500).send({error: err});
+        }
+    });
+
+});
+
 /* CORS REQUEST */
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
