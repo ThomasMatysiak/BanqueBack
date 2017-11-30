@@ -56,7 +56,7 @@ router.get('/api/user/:username/:password', function(req,res) {
         }
       }
       else {
-        res.status(500).send({error: "MySQL error"});
+        res.status(500).send({error: err});
       }
     });
 });
